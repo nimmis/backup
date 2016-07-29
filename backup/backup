@@ -1,0 +1,268 @@
+#!/bin/sh
+#
+#
+# shell script to do periodic backup with cron
+#
+#
+# (c) 2016 nimmis <kjell.havneskold@gmail.com>
+#
+#######################################################
+
+
+#
+# set parameter in configfile
+#
+# set_params_in_config <configfile> <parameter> <value>
+#
+
+set_params_in_config() {
+  # if file does not exists, create empty file
+  if [ ! -f ${1} ]; then
+    touch ${1}
+  fi
+  # check to se if parameter exists in file
+  if grep -q ^${2}\= ${1} ; then
+    # replace value for parameter
+    sed -i "s/^${2}\=.*/${2}\=${3}/" ${1}
+  else
+    # add new line at end of file
+    echo "${2}=${3}" >> ${1}
+  fi
+}
+
+#
+# set default parameters
+#
+# set_def_params_in_config <configfile> <parameter> <value>
+#
+
+set_def_params_in_config() {
+  if [ ! -f ${1} ] || 
+     ! grep -q ^${2}\= ${1} ; then
+    set_params_in_config ${1} ${2} "${3}"
+  fi
+}
+
+#
+#
+# set_cron_interval
+#
+# set_cron_interval <interval>
+#
+# the <interval> is defined as <number of units><unit> where
+# unit is
+# m for minutes
+# h for hours
+# d for days
+# M for month
+
+set_cron_interval() {
+  # get units
+  units=`echo ${1} | egrep -o '[0-9]+'`
+  unit=`echo ${1} | egrep -o '[m,h,d,m]$'`
+  
+  # check that both are defined
+  if [ -z ${units} ] || [ -z ${unit} ]; then
+    echo "wrong cron time format"
+    echo "format is <number><unit> where unit is any of m,h,d,M" 
+    exit 1
+  fi
+
+  case ${unit} in
+    m) cron="*\/${units} * * * *"
+       ;;
+    h) cron="* *\/${units} * * *" 
+       ;;
+    d) cron="* * *\/${units} * *"
+       ;;
+    M) cron="* * * *\/${units} *" 
+       ;;
+    *) echo "Unit must be h,m,d or M"
+       exit 1
+       ;;
+  esac
+
+  set_params_in_config /etc/backup/${cmdname}.conf backup_interval ${1} 
+  set_params_in_config /etc/backup/${cmdname}.conf backup_cron "\'${cron}\'"
+
+  # if active, need to reload with new interval
+  if test_cron; then
+    echo "ative need to reload cron"
+    # reload settings
+    check_config_params
+    # update cron
+    set_cron
+  fi
+}
+
+set_copies() {
+  copies=`echo ${1} | egrep -o '[0-9]+'` 
+  if [ -z ${copies} ]; then
+    echo "need to give numeric value to number of copies to keep"
+    exit 1
+  else
+    set_params_in_config /etc/backup/${cmdname}.conf backups_to_keep ${copies}
+  fi
+}
+set_cron() {
+  { /usr/bin/crontab -l | grep -v "${0} backup$" ; echo "${backup_cron} ${0} backup"; } | /usr/bin/crontab -
+}
+
+unset_cron() {
+  /usr/bin/crontab -l | grep -v "${0} backup$" | /usr/bin/crontab -
+}
+
+test_cron() {
+   /usr/bin/crontab -l | grep -q "${0} backup$" 
+   return $?
+}
+
+
+#
+# catch name used to execute this command
+#
+
+cmdnamepath=$0
+cmdname=${cmdnamepath##*/}
+cmd=$1
+
+#
+# check configuration file and critical values from the file
+#
+check_config_params() {
+
+  # check that the configutation file exists, if not, create and
+  # set default parametervalues
+  if [ ! -d /etc/backup ]; then
+    mkdir -p /etc/backup
+  fi
+
+  # check and set default values
+  subdir=`hostname`
+  set_def_params_in_config /etc/backup/${cmdname}.conf backup_dir "/backup/${subdir}"
+  set_def_params_in_config /etc/backup/${cmdname}.conf tmp_base_dir "/tmp"
+  set_def_params_in_config /etc/backup/${cmdname}.conf backups_to_keep 5
+  set_def_params_in_config /etc/backup/${cmdname}.conf backup_interval 1h
+  set_def_params_in_config /etc/backup/${cmdname}.conf backup_cron "'* * */1 * *'" 
+
+  # load settings
+  source /etc/backup/${cmdname}.conf
+
+  # check that the backup directory is definied and exists
+  if [ -z ${backup_dir} ]; then
+    echo "no backup directory defined (backup_dir=) in /etc/backup/${cmdname}.conf"
+    exit 1
+  else
+    # check if backup directory exists
+    if [ ! -d ${backup_dir} ]; then
+       echo "creating backupdirectory ${backup_dir}"
+       mkdir -p ${backup_dir} || exit 1 
+    fi
+  fi
+}
+
+#
+# check to see if alternative functions exists
+# in the directory /usr/local/lib/backup
+
+check_alt_procs() {
+  # check if the file exists
+  if [ -f /usr/local/lib/backup/${cmdname}.lib ]; then 
+    source /usr/local/lib/backup/${cmdname}.lib
+  fi
+} 
+
+print_backup_info() {
+  backups=`ls -1 ${backup_dir} | wc -l`          
+  latest=`ls -1 ${backup_dir} | tail -1`         
+  total_size=`du -hs /backup/ | awk '{print $1}'`
+
+  printf "Active backups %s of maximum %s\n" `ls -1l ${backup_dir} | wc -l` ${backups_to_keep}
+  printf "Backup interval %s (cron %s)\n" ${backup_interval} "${backup_cron}"
+  printf "Latest backup file %s\n" ${latest}            
+  echo "Total size of backups ${total_size}B"
+  echo "Backup destination directory is ${backup_dir}"
+}
+
+
+check_for_alt_subs() {
+  type $1 | grep -q "shell function"
+  return $?
+}
+
+backup_status() {
+  if check_for_alt_subs 'alt_backup_status' ; then
+    alt_backup_status
+  else
+    if test_cron ; then                        
+      echo "Backup is active"                                  
+    else                                                       
+      echo "Backup is disabled"                                
+    fi                                                         
+    print_backup_info
+  fi    
+}
+
+
+#
+# read settings
+#
+check_config_params
+#
+# get alternative functions
+#
+check_alt_procs
+
+
+case $1 in
+
+status)
+  backup_status
+  ;;
+
+show-backups)
+  echo "list of backups"
+  ls -1l ${backup_dir}
+  ;;
+
+set-interval)
+  set_cron_interval $2
+  ;;
+set-copies)
+  set_copies $2
+  ;;
+disable)
+  unset_cron
+  ;;
+enable)
+  set_cron
+  ;;
+show-sources)
+  for source_dir in `dir_to_list`
+  do
+    dir_size=`du -hs ${source_dir} | awk '{print $1}'`
+    printf "backup of %s, estimated size %s\n" ${source_dir} "${dir_size}B"
+  done
+  ;;
+backup)
+  do_backup
+  ;;
+*)
+  echo "$0 <command> [<parameters>]"
+  echo 
+  echo "command to controll backup of database in container"
+  echo
+  echo "Command                Information"
+  echo "status                 gives the status of backup (active/disabled/number of backups/disk size)"
+  echo "disable                disable backup"
+  echo "enable                 enable backup"
+  echo "set-dest [<dir>]       set/show backup-file destination (default /backup)"
+  echo "set-copies [<num>]     set/show number of backup to keep"
+  echo "set-interval [<inter>] set/show intervall of backup (hour/day/week/month)"
+  echo "show-backups           show currently saved backups"
+  echo "backup                 run backup now"
+  if check_for_alt_subs 'alt_help' ; then 
+     alt_help
+  fi
+  ;;
+esac

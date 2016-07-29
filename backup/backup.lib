@@ -1,0 +1,57 @@
+#alt_backup_status() {
+#
+#  echo "test"
+#
+#}
+
+alt_help() {
+  echo "show-sources           show current source directories"
+  echo "remove-source <src>    remove source directory from backup"
+  echo "add-source <src>       add source directory to backup"
+}
+
+dir_to_list() {
+  echo ${backup_dirs} | sed "s/^#//" | sed "s/#$//" | sed "s/#/\n/g"
+}
+
+do_backup() {
+
+  # create temp backup directory
+
+  tmp_dir=${tmp_base_dir}/${cmdname}
+  mkdir -p ${tmp_dir}
+
+  # get date for backupfiles
+  backup_date=`date +%Y_%m_%d_%H_%M`
+
+  # make back for each directory
+  for source_dir in `dir_to_list`
+  do
+    dir_size=`du -hs ${source_dir} | awk '{print $1}'`
+    printf "backup of %s, size %s" ${source_dir} "${dir_size}B"
+    # make dir to filename
+    dir_name=`echo ${source_dir} | sed "s/\//_/g"`
+    dir_file="${tmp_dir}/${cmdname}${dir_name}-${backup_date}.tar.bz2"
+    tar cfj ${dir_file} -C${source_dir} .
+    dir_size=`du -hs ${dir_file} | awk '{print $1}'`
+    printf " compressed %s\n" "${dir_size}B" 
+  done
+
+  # build single backup file from all
+
+  tar cf ${backup_dir}/${cmdname}-${backup_date}.tar -C${tmp_dir} .
+
+  #do safe remove
+  rm -f ${tmp_dir}/${cmdname}*.tar.bz2
+  rmdir ${tmp_dir}
+
+  # get old achives to delete
+
+  remove_backups=`ls -1 ${backup_dir}/${cmdname}* | head -n -${backups_to_keep}`
+  for remove_file in $remove_backups
+  do
+    echo "removing old backup $remove_file"
+    rm -f ${remove_file}
+  done
+}
+
