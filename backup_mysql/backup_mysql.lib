@@ -1,0 +1,108 @@
+#
+# library file for backup
+#
+# (c) 2016 nimmis <kjell.havneskold@gmail.com>
+#
+
+#
+# define which extra commands that exists in this library
+#
+# define alt_cmd as #cmd#[cmd#][cmd#] , blank/empty defines no extra commands
+#
+
+alt_cmd="#user#password#list#add#remove#"
+
+#
+# alt_help
+#
+# show help for commands added in this file
+#
+
+alt_help() {
+  echo "user <username>        set username for database access"
+  echo "password <password>    set password for database access"
+  echo "list                   list current databases"
+  echo "add <db>               add database to backup"
+  echo "remove <db>            remove database from backup"
+  echo
+  echo "use 'add all' to backup all database dynamic"
+}
+
+#
+# extra_config_params
+#
+# configure extra parameters used by this command
+#
+
+extra_config_params() {
+  
+  set_def_params_in_config /etc/backup/${cmdname}.conf backup_user 'root'
+  set_def_params_in_config /etc/backup/${cmdname}.conf backup_password
+  set_def_params_in_config /etc/backup/${cmdname}.conf backup_databases '#'
+
+}
+
+#
+# db_to_list
+#
+# convert #db1#db2#db3# to
+# db1
+# db2
+# db3
+
+db_to_list() {
+  if [ "${backup_dirs}" != "#" ]; then
+    if "${backup_dirs}" == "#all#" ]; then
+      echo 'show databases' | mysql -u"${backup_user}" -p"${backup_password}" | tail -n +2
+    else
+      echo ${backup_dirs} | sed "s/^#//" | sed "s/#$//" | sed "s/#/\n/g"
+    fi
+  fi
+}
+#
+# do_list
+#
+# list all databases to be backuped
+#
+
+do_list() {
+
+}
+
+##
+# alt_case <command> <parameter>
+#
+# decodes additional commands, all commands needs to be defined in the
+# variable alt_cmd
+#
+
+alt_case() {
+  
+  case ${1} in
+    user)
+      ;;
+    password)
+      ;;
+    list)
+      do_list
+      ;;
+    add)
+      ;;
+    remove)
+      ;;
+  esac
+
+}
+
+
+#
+# do_backup
+#
+# define of the code the makes the backup
+#
+
+do_backup() {
+  echo "code for backup"
+}
+
+
