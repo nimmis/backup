@@ -48,7 +48,7 @@ install() {
   if [ -f ${SOURCE}/${1}.lib ]; then
      # check if a version already exists
     if [ -f ${lib_dir}/${1}.lib ]; then
-       echo "config file ${lib_dir}/${1}.lib already exists, renaming old as ${lib_dir}/${1}.conf.old"
+       echo "config file ${lib_dir}/${1}.lib already exists, renaming old as ${lib_dir}/${1}.lib.old"
        mv ${lib_dir}/${1}.lib ${lib_dir}/${1}.lib.old
     fi
     cp ${SOURCE}/${1}.lib ${lib_dir}/${1}.lib
