@@ -45,9 +45,9 @@ set_def_params_in_config() {
 
 #
 #
-# set_cron_interval
+# set_cron_schedule
 #
-# set_cron_interval <interval>
+# set_cron_schedule <interval>
 #
 # the <interval> is defined as <number of units><unit> where
 # unit is
@@ -56,7 +56,7 @@ set_def_params_in_config() {
 # d for days
 # M for month
 
-set_cron_interval() {
+set_cron_schedule() {
   # get units
   units=`echo ${1} | egrep -o '[0-9]+'`
   unit=`echo ${1} | egrep -o '[m,h,d,m]$'`
@@ -224,7 +224,7 @@ retention_backup() {
   if [ -f ${backup_dir}/${cmdname}* ]; then
 
     # get old achives to delete 
-    remove_backups=`ls -1 ${backup_dir}/${cmdname}* | head -n -${backups_to_keep}`                                                         
+    remove_backups=`ls -1 ${backup_dir}/${cmdname}* 2> /dev/null | head -n -${backups_to_keep}`                                                         
 
     # remove selected files
     for remove_file in $remove_backups                                                                                                     
@@ -273,10 +273,10 @@ show_help() {
   echo "status                 gives the status of backup (active/disabled/number of backups/disk size)"
   echo "disable                disable backup"
   echo "enable                 enable backup"
-  echo "set-dest [<dir>]       set/show backup-file destination (default /backup)"
-  echo "set-copies [<num>]     set/show number of backup to keep"
-  echo "set-interval [<inter>] set/show intervall of backup (hour/day/week/month)"
-  echo "show-backups           show currently saved backups"
+  echo "destination <dir>      set backup-file destination (default /backup/<hostname>/<cmdname>)"
+  echo "retain <num>           set number of backup to retain"
+  echo "schedule <inter>       set sceduled intervall between backups (hour/day/week/month)"
+  echo "show                   show currently saved backups"
   echo "backup                 run backup now"
   echo "help                   Show this information"
   if check_for_alt_subs 'alt_help' ; then     
@@ -301,17 +301,18 @@ case ${1} in
 status)
   backup_status
   ;;
-
-show-backups)
+show)
   echo "list of backups"
   ls -1l ${backup_dir}
   ;;
-
-set-interval)
-  set_cron_interval $2
+schedule)
+  set_cron_schedule $2
   ;;
-set-copies)
+retain)
   set_copies $2
+  ;;
+destination)
+  set_destination $2
   ;;
 disable)
   unset_cron
@@ -335,3 +336,4 @@ help|*)
   fi
   ;;
 esac
+

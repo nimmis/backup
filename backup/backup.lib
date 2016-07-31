@@ -13,9 +13,9 @@
 #
 
 alt_help() {
-  echo "show-sources           show current source directories"
-  echo "remove-source <src>    remove source directory from backup"
-  echo "add-source <src>       add source directory to backup"
+  echo "list                   list current directories"
+  echo "add <src>              add directory to backup"
+  echo "remove <src>           remove directory from backup"
 }
 
 #
@@ -33,12 +33,11 @@ extra_config_params() {
 # list all sources
 #
 
-show_sources() {
+show_dir() {
   if [ "${backup_dirs}" == "#" ]; then
     echo "no sources defined"
     exit 1
   fi
-
   for source_dir in `dir_to_list`                                          
   do                                                                       
     dir_size=`du -hs ${source_dir} | awk '{print $1}'`                     
@@ -50,7 +49,7 @@ show_sources() {
 # remove source from list
 #
 
-remove_source() {
+remove_dir() {
   # check to see if source is present
   if echo ${backup_dirs} | grep -q "#${1}#" ; then
     echo "removning source ${1}"
@@ -68,7 +67,7 @@ remove_source() {
 # add source from list
 #
 
-add_source() {
+add_dir() {
   # check to see if source is present
   if echo ${backup_dirs} | grep -q "#${1}#" ; then
     echo "source already exists"
@@ -92,7 +91,7 @@ add_source() {
 # define as #cmd#[cmd#]
 #
 
-alt_cmd="#show-sources#remove-source#add-source#"
+alt_cmd="#list#remove#add#"
 
 #
 # additional commands in case
@@ -101,14 +100,14 @@ alt_cmd="#show-sources#remove-source#add-source#"
 alt_case() {
   
   case ${1} in
-   show-sources)
-     show_sources
+   list)
+     show_dir
      ;;
-   remove-source)
-     remove_source ${2}
+   remove)
+     remove_dir ${2}
      ;;
-   add-source)
-     add_source ${2}
+   add)
+     add_dir ${2}
      ;;
    esac
 }
