@@ -1,0 +1,66 @@
+#
+# library file for backup
+#
+# (c) 2016 nimmis <kjell.havneskold@gmail.com>
+#
+
+#
+# define which extra commands that exists in this library
+#
+# define alt_cmd as #cmd#[cmd#][cmd#] , blank/empty defines no extra commands
+#
+
+alt_cmd=""
+
+
+#
+# alt_help
+#
+# show help for commands added in this file
+#
+
+alt_help() {
+
+}
+
+#
+# extra_config_params
+#
+# configure extra parameters used by this command
+#
+
+extra_config_params() {
+
+}
+
+##
+# alt_case <command> <parameter>
+#
+# decodes additional commands, all commands needs to be defined in the
+# variable alt_cmd
+#
+
+alt_case() {
+  
+#  case ${1} in
+#   cmd1)
+#     do_cmd1
+#     ;;
+#   cmd2)
+#     do_cmd2
+#     ;;
+#  esac
+
+}
+
+
+#
+# do_backup
+#
+# define of the code the makes the backup
+#
+
+do_backup() {
+
+}
+
