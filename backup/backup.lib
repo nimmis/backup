@@ -1,8 +1,16 @@
-#alt_backup_status() {
 #
-#  echo "test"
+# library file for backup
 #
-#}
+# (c) 2016 nimmis <kjell.havneskold@gmail.com>
+#
+
+#
+# additional information in help
+#
+
+#
+# show help text for extra commands in this lib
+#
 
 alt_help() {
   echo "show-sources           show current source directories"
@@ -10,9 +18,112 @@ alt_help() {
   echo "add-source <src>       add source directory to backup"
 }
 
+#
+# add config settings for this command
+#
+
+extra_config_params() {
+
+  # set backup_dirs empty
+  set_def_params_in_config /etc/backup/${cmdname}.conf backup_dirs
+
+}
+
+#
+# list all sources
+#
+
+show_sources() {
+  for source_dir in `dir_to_list`                                          
+  do                                                                       
+    dir_size=`du -hs ${source_dir} | awk '{print $1}'`                     
+    printf "backup of %s, estimated size %s\n" ${source_dir} "${dir_size}B"
+  done   
+}
+
+#
+# remove source from list
+#
+
+remove_source() {
+  # check to see if source is present
+  if echo ${backup_dirs} | grep -q "#${1}#" ; then
+    echo "removning source ${1}"
+    # fix all / to \/ for sed
+    remove_path=`echo ${1} | sed 's./.\\\\/.g'`
+    # remove defined path and save new value
+    set_params_in_config /etc/backup/${cmdname}.conf backup_dirs `echo ${backup_dirs} | sed "s/#${remove_path}#/#/g" | sed 's./.\\\\/.g'`
+  else
+    echo "directory not in source list"
+    exit 1
+  fi
+}
+
+#
+# add source from list
+#
+
+add_source() {
+  # check to see if source is present
+  if echo ${backup_dirs} | grep -q "#${1}#" ; then
+    echo "source already exists"
+    exit 1
+  else 
+    # check that the directoy really exists and that it is absolute
+    if [ -d ${1} ] &&
+       echo ${1} | grep -q "^/" ; then
+       # add inte to source
+       set_params_in_config /etc/backup/${cmdname}.conf backup_dirs `echo "${backup_dirs}${1}#" | sed 's./.\\\\/.g'`
+    else
+       echo "source not a directory"
+       exit 1
+    fi
+  fi
+}
+
+#
+# define which commands that exists in alt_case
+#
+# define as #cmd#[cmd#]
+#
+
+alt_cmd="#show-sources#remove-source#add-source#"
+
+#
+# additional commands in case
+#
+
+alt_case() {
+  
+  case ${1} in
+   show-sources)
+     for source_dir in `dir_to_list`
+     do                             
+       dir_size=`du -hs ${source_dir} | awk '{print $1}'`
+       printf "backup of %s, estimated size %s\n" ${source_dir} "${dir_size}B"
+     done                           
+     ;;
+   remove-source)
+     remove_source ${2}
+     ;;
+   add-source)
+     add_source ${2}
+     ;;
+   esac
+}
+
+
+#
+# convert list to one directory per line
+#
+
 dir_to_list() {
   echo ${backup_dirs} | sed "s/^#//" | sed "s/#$//" | sed "s/#/\n/g"
 }
+
+#
+# make one backup
+#
 
 do_backup() {
 
@@ -45,13 +156,8 @@ do_backup() {
   rm -f ${tmp_dir}/${cmdname}*.tar.bz2
   rmdir ${tmp_dir}
 
-  # get old achives to delete
+  # delet old achives
 
-  remove_backups=`ls -1 ${backup_dir}/${cmdname}* | head -n -${backups_to_keep}`
-  for remove_file in $remove_backups
-  do
-    echo "removing old backup $remove_file"
-    rm -f ${remove_file}
-  done
+  retention_backup
 }
 

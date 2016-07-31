@@ -95,8 +95,15 @@ set_cron_interval() {
   fi
 }
 
+#
+# set number of bacup copies to keep
+#
+
 set_copies() {
+  # be sure it's numeric
   copies=`echo ${1} | egrep -o '[0-9]+'` 
+
+  # set value if set
   if [ -z ${copies} ]; then
     echo "need to give numeric value to number of copies to keep"
     exit 1
@@ -104,19 +111,31 @@ set_copies() {
     set_params_in_config /etc/backup/${cmdname}.conf backups_to_keep ${copies}
   fi
 }
+
+#
+# add cron line to crontab
+#
+
 set_cron() {
   { /usr/bin/crontab -l | grep -v "${0} backup$" ; echo "${backup_cron} ${0} backup"; } | /usr/bin/crontab -
 }
+
+#
+# remove cron line from crontab
+#
 
 unset_cron() {
   /usr/bin/crontab -l | grep -v "${0} backup$" | /usr/bin/crontab -
 }
 
+#
+# test if cron line is present in crontab
+#
+
 test_cron() {
    /usr/bin/crontab -l | grep -q "${0} backup$" 
    return $?
 }
-
 
 #
 # catch name used to execute this command
@@ -159,6 +178,12 @@ check_config_params() {
        mkdir -p ${backup_dir} || exit 1 
     fi
   fi
+
+  # check if there are extra config_params
+
+  if check_for_alt_subs 'extra_config_params' ; then 
+    extra_config_params
+  fi
 }
 
 #
@@ -172,6 +197,11 @@ check_alt_procs() {
   fi
 } 
 
+
+#
+# print information about current backup
+#
+
 print_backup_info() {
   backups=`ls -1 ${backup_dir} | wc -l`          
   latest=`ls -1 ${backup_dir} | tail -1`         
@@ -184,11 +214,35 @@ print_backup_info() {
   echo "Backup destination directory is ${backup_dir}"
 }
 
+#
+# remove backup not active
+#
+
+retention_backup() {
+
+  # get old achives to delete 
+  remove_backups=`ls -1 ${backup_dir}/${cmdname}* | head -n -${backups_to_keep}`                                                         
+
+  # remove selected files
+  for remove_file in $remove_backups                                                                                                     
+  do                                                                                                                                     
+    echo "removing old backup $remove_file"                                                                                              
+    rm -f ${remove_file}                                                                                                                 
+  done    
+}
+
+#
+# check if function exists, returns to if it exists
+#
 
 check_for_alt_subs() {
   type $1 | grep -q "shell function"
   return $?
 }
+
+#
+# return status of backup, true if cron job is active
+#
 
 backup_status() {
   if check_for_alt_subs 'alt_backup_status' ; then
@@ -203,18 +257,42 @@ backup_status() {
   fi    
 }
 
+#
+# help help information
+#
+show_help() {
+  echo "$0 <command> [<parameters>]"         
+  echo                                                
+  echo "command to controll backup of database in container"
+  echo                                                 
+  echo "Command                Information"
+  echo "status                 gives the status of backup (active/disabled/number of backups/disk size)"
+  echo "disable                disable backup"
+  echo "enable                 enable backup"
+  echo "set-dest [<dir>]       set/show backup-file destination (default /backup)"
+  echo "set-copies [<num>]     set/show number of backup to keep"
+  echo "set-interval [<inter>] set/show intervall of backup (hour/day/week/month)"
+  echo "show-backups           show currently saved backups"
+  echo "backup                 run backup now"
+  echo "help                   Show this information"
+  if check_for_alt_subs 'alt_help' ; then     
+     alt_help           
+  fi
+}
+
+#
+# get alternative functions
+#
+
+check_alt_procs
 
 #
 # read settings
 #
+
 check_config_params
-#
-# get alternative functions
-#
-check_alt_procs
 
-
-case $1 in
+case ${1} in
 
 status)
   backup_status
@@ -237,32 +315,19 @@ disable)
 enable)
   set_cron
   ;;
-show-sources)
-  for source_dir in `dir_to_list`
-  do
-    dir_size=`du -hs ${source_dir} | awk '{print $1}'`
-    printf "backup of %s, estimated size %s\n" ${source_dir} "${dir_size}B"
-  done
-  ;;
 backup)
   do_backup
   ;;
-*)
-  echo "$0 <command> [<parameters>]"
-  echo 
-  echo "command to controll backup of database in container"
-  echo
-  echo "Command                Information"
-  echo "status                 gives the status of backup (active/disabled/number of backups/disk size)"
-  echo "disable                disable backup"
-  echo "enable                 enable backup"
-  echo "set-dest [<dir>]       set/show backup-file destination (default /backup)"
-  echo "set-copies [<num>]     set/show number of backup to keep"
-  echo "set-interval [<inter>] set/show intervall of backup (hour/day/week/month)"
-  echo "show-backups           show currently saved backups"
-  echo "backup                 run backup now"
-  if check_for_alt_subs 'alt_help' ; then 
-     alt_help
+help|*)
+  # check to see if there are more commands to test
+  if [ ! -z ${1} ] &&
+     [ ! -z ${alt_cmd} ] &&
+     echo ${alt_cmd} | grep -q "#${1}" ; then
+     if check_for_alt_subs 'alt_case' ; then 
+       alt_case ${1} ${2}
+     fi
+  else
+     show_help
   fi
   ;;
 esac
