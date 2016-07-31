@@ -1,9 +1,15 @@
 #!/bin/sh
+#
+# install script for backup
+#
+# (c) 2016 nimmis <kjell.havneskold@gmail.com>
+#
 
 etc_dir=/etc/backup
 lib_dir=/usr/local/lib/backup
 exe_dir=/usr/local/bin
-
+cmd=${1}
+BASEDIR=$(dirname "$0") 
 
 install() {
   # make sure etc directory exists
@@ -13,7 +19,10 @@ install() {
   # make sure exec directory exists
   mkdir -p ${exe_dir}
 
-  BASEDIR=$(dirname "$0")
+  # make sure that the base modules is installed
+  pre_check
+
+  echo "Installing ${1}"
   SOURCE="${BASEDIR}/${1}"
 
   if [ ! -d ${SOURCE} ]; then
@@ -56,11 +65,71 @@ install() {
   fi  
 }
 
-install_all() {
-  for install_mod in `ls -l | grep ^d | awk '{print $NF}'`
+#
+# check that backup has been installed before installing any other module
+#
+pre_check() {
+  if [ ! -f ${exe_dir}/backup ]; then
+    install backup
+  fi
+}
+
+#
+# list all modules available to install
+#
+
+list_all() {
+  printf "%-20s%s\n" "Module" "Info"
+  for install_mod in `ls -l ${BASEDIR}/ | grep ^d | awk '{print $NF}'`
   do
-    echo "mod=${install_mod}"
+    INFO=""
+    printf "%-20s" ${install_mod}  
+    if [ -f ${BASEDIR}/${install_mod}/INFO.TXT ]; then
+       head -1 ${BASEDIR}/${install_mod}/INFO.TXT
+    else
+      echo ""
+    fi
   done
 }
-install_all
 
+#
+# install all modules
+#
+
+install_all() {
+
+  for install_mod in `ls -l ${BASEDIR}/ | grep ^d | awk '{print $NF}'`
+  do
+    install ${install_mod}
+  done
+}
+
+show_help() {
+  echo "$0 <command>"                                
+  echo                                                                                             
+  echo "command to install backup program and addons"
+  echo                                                       
+  echo "Command                Information"                  
+  echo "help                   show this information"          
+  echo "all                    Install backup and all addons"  
+  echo "list                   List all addons available"      
+  echo "backup                 Basic installation of backup scripts"
+  echo "<addon>                Install <addon> addon to backup"
+}
+
+case ${cmd} in
+list)
+  list_all
+  ;;
+help)
+  show_help
+  ;;
+*)
+  if [ -z ${cmd} ] ||
+     [ ! -d ${BASEDIR}/${cmd} ]; then
+    show_help
+  else
+    install ${cmd}
+  fi
+  ;;
+esac
