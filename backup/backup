@@ -220,15 +220,19 @@ print_backup_info() {
 
 retention_backup() {
 
-  # get old achives to delete 
-  remove_backups=`ls -1 ${backup_dir}/${cmdname}* | head -n -${backups_to_keep}`                                                         
+  
+  if [ -f ${backup_dir}/${cmdname}* ]; then
 
-  # remove selected files
-  for remove_file in $remove_backups                                                                                                     
-  do                                                                                                                                     
-    echo "removing old backup $remove_file"                                                                                              
-    rm -f ${remove_file}                                                                                                                 
-  done    
+    # get old achives to delete 
+    remove_backups=`ls -1 ${backup_dir}/${cmdname}* | head -n -${backups_to_keep}`                                                         
+
+    # remove selected files
+    for remove_file in $remove_backups                                                                                                     
+    do                                                                                                                                     
+      echo "removing old backup $remove_file"                                                                                              
+      rm -f ${remove_file}                                                                                                                 
+    done 
+  fi   
 }
 
 #
