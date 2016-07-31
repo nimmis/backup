@@ -158,7 +158,7 @@ check_config_params() {
 
   # check and set default values
   subdir=`hostname`
-  set_def_params_in_config /etc/backup/${cmdname}.conf backup_dir "/backup/${subdir}"
+  set_def_params_in_config /etc/backup/${cmdname}.conf backup_dir "/backup/${subdir}/${cmdname}"
   set_def_params_in_config /etc/backup/${cmdname}.conf tmp_base_dir "/tmp"
   set_def_params_in_config /etc/backup/${cmdname}.conf backups_to_keep 5
   set_def_params_in_config /etc/backup/${cmdname}.conf backup_interval 1h
@@ -205,7 +205,7 @@ check_alt_procs() {
 print_backup_info() {
   backups=`ls -1 ${backup_dir} | wc -l`          
   latest=`ls -1 ${backup_dir} | tail -1`         
-  total_size=`du -hs /backup/ | awk '{print $1}'`
+  total_size=`du -hs ${backup_dir} | awk '{print $1}'`
 
   printf "Active backups %s of maximum %s\n" `ls -1l ${backup_dir} | wc -l` ${backups_to_keep}
   printf "Backup interval %s (cron %s)\n" ${backup_interval} "${backup_cron}"
