@@ -19,8 +19,11 @@ install() {
   # make sure exec directory exists
   mkdir -p ${exe_dir}
 
-  # make sure that the base modules is installed
-  pre_check
+  # prevent infinite loop
+  if [ "${1}" != "backup" ]; then
+    # make sure that the base modules is installed
+    pre_check
+  fi
 
   echo "Installing ${1}"
   SOURCE="${BASEDIR}/${1}"
