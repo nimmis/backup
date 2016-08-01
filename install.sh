@@ -127,6 +127,9 @@ list)
 help)
   show_help
   ;;
+all)
+  install_all
+  ;;
 *)
   if [ -z ${cmd} ] ||
      [ ! -d ${BASEDIR}/${cmd} ]; then
