@@ -10,7 +10,7 @@
 # define alt_cmd as #cmd#[cmd#][cmd#] , blank/empty defines no extra commands
 #
 
-alt_cmd="#user#password#list#add#remove#"
+alt_cmd="#user#password#list#list-db#add#remove#check#"
 
 #
 # alt_help
@@ -22,8 +22,10 @@ alt_help() {
   echo "user <username>        set username for database access"
   echo "password <password>    set password for database access"
   echo "list                   list current databases"
+  echo "list-db                list all available databases"
   echo "add <db>               add database to backup"
   echo "remove <db>            remove database from backup"
+  echo "check                  check that mysql and databases are accessable"
   echo
   echo "use 'add all' to backup all database dynamic"
 }
@@ -43,6 +45,28 @@ extra_config_params() {
 }
 
 #
+# check_db_access <db command>
+#
+# check if the databases can be accessed with the defined username and password
+#
+
+check_db_access() {
+
+  mysql -u"${backup_user}" -p"${backup_password}" -e"${1}" 2> /dev/null
+  return $?
+
+}
+#
+# get_databases
+#
+# return all databases found 
+#
+
+get_databases() {
+  echo 'show databases' | mysql -u"${backup_user}" -p"${backup_password}" 2> /dev/null | tail -n +2 | tr '\n' '#' | awk '{print "#"$0}'
+}
+
+#
 # db_to_list
 #
 # convert #db1#db2#db3# to
@@ -51,12 +75,20 @@ extra_config_params() {
 # db3
 
 db_to_list() {
-  if [ "${backup_dirs}" != "#" ]; then
-    if "${backup_dirs}" == "#all#" ]; then
-      echo 'show databases' | mysql -u"${backup_user}" -p"${backup_password}" | tail -n +2
-    else
-      echo ${backup_dirs} | sed "s/^#//" | sed "s/#$//" | sed "s/#/\n/g"
+
+  # check if empty list
+  if [ "${backup_databases}" != "#" ]; then
+
+    db_list=${backup_databases}
+
+    # if all retreive list of all datanbases
+    if [ "${backup_databases}" == "#all#" ]; then
+      db_list=`get_databases`
     fi
+
+    # remove lead and tail #, convert rest of # to newline
+    echo ${db_list} | sed "s/^#//" | sed "s/#$//" | sed "s/#/\n/g"
+    
   fi
 }
 #
@@ -66,7 +98,195 @@ db_to_list() {
 #
 
 do_list() {
+  if [ "${backup_databases}" == "#" ]; then 
+    echo "no databases selected"
+  else
+    if [ "${backup_databases}" == "#all#" ]; then
+      echo "All databases selected"
+    fi
+    db_to_list
+  fi   
+}
 
+#
+# do_list_db
+#
+# list all databases available
+#
+
+do_list_db() {
+  echo "databases available for backup"
+  get_databases | sed "s/^#//" | sed "s/#$//" | sed "s/#/\n/g"  
+}
+#
+# do_add <db>
+#
+# add database, check if it exists
+# use all to dynamic backup all existsing databases
+#
+
+do_add() {
+ 
+  # check that parameter is supplied
+  if [ "${1}" == "" ]; then
+    echo "use ${cmdname} add <database>"
+    exit 1
+  fi
+
+  # use database all to set backup of all database
+  if [ "${1}" == "all" ]; then 
+
+    set_params_in_config /etc/backup/${cmdname}.conf backup_databases '#all#'
+
+  else
+
+    # check to see that the databasename exists   
+    if get_databases | grep -q "#${1}#" ; then
+
+       # do not add database to 'all'
+       if [ "${backup_databases}" == "#all#" ]; then
+
+         echo "Cannot add to 'all', please remove all before adding individual databases"
+         exit 1
+
+       fi
+
+       set_params_in_config /etc/backup/${cmdname}.conf backup_databases "${backup_databases}${1}#"  
+       echo "Added ${1} to list of databases"
+    else
+
+      echo "database does not exist"
+      exit 1
+
+    fi
+  fi
+}
+
+#
+# do_remove <db>
+#
+# remove <db> from list of databases
+#
+# if remove database when 'all' is selected, all other database exept the
+# selected on is kept
+#
+
+do_remove() {
+
+  # check that parameter is supplied                                                               
+  if [ "${1}" == "" ]; then                                                                        
+    echo "use ${cmdname} remove <database>"                                                               
+    exit 1                                                                                         
+  fi
+
+  # check if database exists
+  if get_databases | grep -q "#${1}#" ; then
+
+    # do exclude from 'all' if all is set
+    if [ "${backup_databases}" == "#all#" ]; then
+
+      # use all as source
+      db_list=`get_databases`
+
+    else
+
+      # use current list
+      db_list="${backup_databases}"
+
+    fi
+
+    # check that database in list
+
+    if echo ${db_list} | grep -q "#${1}#" ; then
+
+      # remove from list
+      set_params_in_config /etc/backup/${cmdname}.conf backup_databases `echo ${db_list} | sed "s/#${1}#/#/g"`
+      echo "database ${1} removed from list"
+
+    else
+
+      echo "database not in current list of databases"
+      exit 1
+
+    fi
+      
+  else
+
+    echo "database does not exist"                                                                                      
+    exit 1                                                                                                              
+                                                                                                                          
+  fi    
+}
+
+#
+# set_user <username>
+#
+# set the username used to access database
+#
+
+set_user() {
+
+  # check that parameter is supplied                                                                                      
+  if [ "${1}" == "" ]; then                                                                                               
+    echo "use ${cmdname} user <username>"                                                                               
+    exit 1                                                                                                                
+  fi   
+
+  set_params_in_config /etc/backup/${cmdname}.conf backup_user "${1}"
+  echo "User set to ${1}"
+}
+
+
+#
+# set_password <password>
+#
+# set to password used to access database
+#
+
+set_password() {
+
+  # check that parameter is supplied                                                                                      
+  if [ "${1}" == "" ]; then                                                                                               
+    echo "use ${cmdname} password <password>"
+    echo
+    echo "To set no password use use ${cmdname} password -"                                                                                 
+    exit 1                                                                                                                
+  fi
+
+  pass="${1}"
+
+  # check if empty password
+  if [ "${pass}" == "-" ]; then
+    pass="" 
+    echo "Warning, setting and empty password is a security risk"
+  fi
+
+  set_params_in_config /etc/backup/${cmdname}.conf backup_password "${pass}" 
+  echo "Password updated"
+}
+
+#
+# do_db_check
+# check mysql/database access
+#
+
+do_db_check() {
+
+  printf "Accessing mysql server : "
+  if check_db_access "quit" ; then
+    echo "OK"
+  else
+    echo "FAIL" 
+  fi 
+  for database in `db_to_list`
+  do
+    printf "Check database %s : " ${database}
+    if check_db_access "use ${database}" ; then
+      echo "OK"
+    else
+      echo "FAIL"
+    fi
+  done
 }
 
 ##
@@ -80,15 +300,25 @@ alt_case() {
   
   case ${1} in
     user)
+      set_user ${2}
       ;;
     password)
+      set_password ${2}
       ;;
     list)
       do_list
       ;;
+    list-db)
+      do_list_db
+      ;;
     add)
+      do_add ${2}
       ;;
     remove)
+      do_remove ${2}
+      ;;
+    check)
+      do_db_check
       ;;
   esac
 
@@ -102,7 +332,49 @@ alt_case() {
 #
 
 do_backup() {
-  echo "code for backup"
+
+  if [ "${backup_dirs}" == "#" ]; then
+    echo "nothing to backup"
+    exit 1
+  fi
+
+  # create temp backup directory
+
+  tmp_dir=${tmp_base_dir}/${cmdname}
+  mkdir -p ${tmp_dir}
+
+  # get date for backupfiles
+  backup_date=`date +%Y_%m_%d_%H_%M`
+
+  # dump data from database into tempdir
+  for database in `db_to_list`                                        
+  do
+    echo "doing dump of ${database}"
+    if [ "${database}" == "information_schema" ] ||
+       [ "${database}" == "performance_schema" ]; then
+       params="--skip-lock-tables"
+    else
+       params=""
+    fi
+    mysqldump -u"${backup_user}" -p"${backup_password}" ${params} ${database}  > ${tmp_dir}/${database}.sql
+  done
+
+  # build single backup file from all
+
+  tar cfj ${backup_dir}/${cmdname}-${backup_date}.tar.bz2 -C${tmp_dir} .
+
+  uncomp=`du -hs ${tmp_dir} | awk '{print $1}'`
+  comp=`du -hs ${backup_dir}/${cmdname}-${backup_date}.tar.bz2 | awk '{print $1}'`
+
+  printf "Backup complete, size %s, compressed %s\n" "${uncomp}B" "${comp}B"
+
+  #do safe remove
+  rm -f ${tmp_dir}/*.sql
+  rmdir ${tmp_dir}
+
+  # delet old achives
+
+  retention_backup
 }
 
 
