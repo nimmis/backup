@@ -221,7 +221,7 @@ print_backup_info() {
 retention_backup() {
 
   
-  if [ -f ${backup_dir}/${cmdname}* ]; then
+#  if [ -f ${backup_dir}/${cmdname}* ]; then
 
     # get old achives to delete 
     remove_backups=`ls -1 ${backup_dir}/${cmdname}* 2> /dev/null | head -n -${backups_to_keep}`                                                         
@@ -232,7 +232,7 @@ retention_backup() {
       echo "removing old backup $remove_file"                                                                                              
       rm -f ${remove_file}                                                                                                                 
     done 
-  fi   
+#  fi   
 }
 
 #
