@@ -5,7 +5,7 @@
 # (c) 2016 nimmis <kjell.havneskold@gmail.com>
 #
 
-etc_dir=/etc/backup
+etc_dir=/usr/local/etc/backup
 lib_dir=/usr/local/lib/backup
 exe_dir=/usr/local/bin
 cmd=${1}

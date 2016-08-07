@@ -8,6 +8,10 @@
 #
 #######################################################
 
+BASE_DIR="/usr/local"
+CONF_DIR="${BASE_DIR}/etc/backup"
+BIN_DIR="${BASE_DIR}/bin"
+LIB_DIR="${BASE_DIR}/lib/backup"
 
 #
 # set parameter in configfile
@@ -82,8 +86,8 @@ set_cron_schedule() {
        ;;
   esac
 
-  set_params_in_config /etc/backup/${cmdname}.conf backup_interval ${1} 
-  set_params_in_config /etc/backup/${cmdname}.conf backup_cron "\'${cron}\'"
+  set_params_in_config ${CONF_DIR}/${cmdname}.conf backup_interval ${1} 
+  set_params_in_config ${CONF_DIR}/${cmdname}.conf backup_cron "\'${cron}\'"
 
   # if active, need to reload with new interval
   if test_cron; then
@@ -108,7 +112,7 @@ set_copies() {
     echo "need to give numeric value to number of copies to keep"
     exit 1
   else
-    set_params_in_config /etc/backup/${cmdname}.conf backups_to_keep ${copies}
+    set_params_in_config ${CONF_DIR}/${cmdname}.conf backups_to_keep ${copies}
   fi
 }
 
@@ -152,24 +156,24 @@ check_config_params() {
 
   # check that the configutation file exists, if not, create and
   # set default parametervalues
-  if [ ! -d /etc/backup ]; then
-    mkdir -p /etc/backup
+  if [ ! -d ${CONF_DIR} ]; then
+    mkdir -p ${CONF_DIR}
   fi
 
   # check and set default values
   subdir=`hostname`
-  set_def_params_in_config /etc/backup/${cmdname}.conf backup_dir "/backup/${subdir}/${cmdname}"
-  set_def_params_in_config /etc/backup/${cmdname}.conf tmp_base_dir "/tmp"
-  set_def_params_in_config /etc/backup/${cmdname}.conf backups_to_keep 5
-  set_def_params_in_config /etc/backup/${cmdname}.conf backup_interval 1h
-  set_def_params_in_config /etc/backup/${cmdname}.conf backup_cron "'* * */1 * *'" 
+  set_def_params_in_config ${CONF_DIR}/${cmdname}.conf backup_dir "/backup/${subdir}/${cmdname}"
+  set_def_params_in_config ${CONF_DIR}/${cmdname}.conf tmp_base_dir "/tmp"
+  set_def_params_in_config ${CONF_DIR}/${cmdname}.conf backups_to_keep 5
+  set_def_params_in_config ${CONF_DIR}/${cmdname}.conf backup_interval 1h
+  set_def_params_in_config ${CONF_DIR}/${cmdname}.conf backup_cron "'* * */1 * *'" 
 
   # load settings
-  source /etc/backup/${cmdname}.conf
+  source ${CONF_DIR}/${cmdname}.conf
 
   # check that the backup directory is definied and exists
   if [ -z ${backup_dir} ]; then
-    echo "no backup directory defined (backup_dir=) in /etc/backup/${cmdname}.conf"
+    echo "no backup directory defined (backup_dir=) in ${CONF_DIR}/${cmdname}.conf"
     exit 1
   else
     # check if backup directory exists
@@ -192,8 +196,8 @@ check_config_params() {
 
 check_alt_procs() {
   # check if the file exists
-  if [ -f /usr/local/lib/backup/${cmdname}.lib ]; then 
-    source /usr/local/lib/backup/${cmdname}.lib
+  if [ -f ${LIB_DIR}/${cmdname}.lib ]; then 
+    source ${LIB_DIR}/${cmdname}.lib
   fi
 } 
 

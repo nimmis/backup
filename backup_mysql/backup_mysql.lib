@@ -38,9 +38,9 @@ alt_help() {
 
 extra_config_params() {
   
-  set_def_params_in_config /etc/backup/${cmdname}.conf backup_user 'root'
-  set_def_params_in_config /etc/backup/${cmdname}.conf backup_password
-  set_def_params_in_config /etc/backup/${cmdname}.conf backup_databases '#'
+  set_def_params_in_config ${CONF_DIR}/${cmdname}.conf backup_user 'root'
+  set_def_params_in_config ${CONF_DIR}/${cmdname}.conf backup_password
+  set_def_params_in_config ${CONF_DIR}/${cmdname}.conf backup_databases '#'
 
 }
 
@@ -136,7 +136,7 @@ do_add() {
   # use database all to set backup of all database
   if [ "${1}" == "all" ]; then 
 
-    set_params_in_config /etc/backup/${cmdname}.conf backup_databases '#all#'
+    set_params_in_config ${CONF_DIR}/${cmdname}.conf backup_databases '#all#'
 
   else
 
@@ -151,7 +151,7 @@ do_add() {
 
        fi
 
-       set_params_in_config /etc/backup/${cmdname}.conf backup_databases "${backup_databases}${1}#"  
+       set_params_in_config ${CONF_DIR}/${cmdname}.conf backup_databases "${backup_databases}${1}#"  
        echo "Added ${1} to list of databases"
     else
 
@@ -200,7 +200,7 @@ do_remove() {
     if echo ${db_list} | grep -q "#${1}#" ; then
 
       # remove from list
-      set_params_in_config /etc/backup/${cmdname}.conf backup_databases `echo ${db_list} | sed "s/#${1}#/#/g"`
+      set_params_in_config ${CONF_DIR}/${cmdname}.conf backup_databases `echo ${db_list} | sed "s/#${1}#/#/g"`
       echo "database ${1} removed from list"
 
     else
@@ -232,7 +232,7 @@ set_user() {
     exit 1                                                                                                                
   fi   
 
-  set_params_in_config /etc/backup/${cmdname}.conf backup_user "${1}"
+  set_params_in_config ${CONF_DIR}/${cmdname}.conf backup_user "${1}"
   echo "User set to ${1}"
 }
 
@@ -261,7 +261,7 @@ set_password() {
     echo "Warning, setting and empty password is a security risk"
   fi
 
-  set_params_in_config /etc/backup/${cmdname}.conf backup_password "${pass}" 
+  set_params_in_config ${CONF_DIR}/${cmdname}.conf backup_password "${pass}" 
   echo "Password updated"
 }
 
