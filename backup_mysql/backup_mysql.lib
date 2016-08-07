@@ -179,6 +179,13 @@ do_remove() {
     exit 1                                                                                         
   fi
 
+  # 'all' means remove all databases"
+  if [ "${1}" == "all" ]; then
+    echo "Remove all databases"                                          
+    set_params_in_config ${CONF_DIR}/${cmdname}.conf backup_databases '#'
+    exit 0                                                                 
+  fi
+
   # check if database exists
   if get_databases | grep -q "#${1}#" ; then
 
