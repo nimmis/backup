@@ -75,11 +75,11 @@ set_cron_schedule() {
   case ${unit} in
     m) cron="*\/${units} * * * *"
        ;;
-    h) cron="* *\/${units} * * *" 
+    h) cron="0 *\/${units} * * *" 
        ;;
-    d) cron="* * *\/${units} * *"
+    d) cron="0 0 *\/${units} * *"
        ;;
-    M) cron="* * * *\/${units} *" 
+    M) cron="0 0 0 *\/${units} *" 
        ;;
     *) echo "Unit must be h,m,d or M"
        exit 1
