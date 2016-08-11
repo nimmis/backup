@@ -6,7 +6,127 @@ A shell script to make backups using cron. The script make it possible to
 - define destination of backups
 - define number of copies to retain
 
-## Installation
+For a description of the backup commands, please go to the [**Basic commands**](#basic) section.
+
+## Using backup in docker containers
+
+
+This backup application is used in my docker containers to make backups of vital information, for installing the application yourself please goto the [**Installation**](#installation) section in this description. The backup is included in the following docker containers
+
+- [nimmis/alpine-micro](https://hub.docker.com/r/nimmis/alpine-micro/)
+- [nimmis/alpine-apache](https://hub.docker.com/r/nimmis/alpine-apache/)
+
+For the schedule (cron) in backup to work the container must be started as a daemon and no new start command used. Otherwise you are responsible to start the cron daemon.
+
+In a comming release there will be instruction who do do a multihost replication of the backup data, stay tuned
+
+There is no need to open a shell to the container to do backup configuration, this can be done with the **docker exec**, starting an apache container and then enable backup for the /web/html as the application writes data inside this directory.
+
+Begin by creating the container
+
+	~$ docker run -d --name web -P nimmis/alpine-apache
+	
+executing the **backup** command without parameters gives list of avaliable commands
+  
+  	~$ docker exec web backup
+	creating backupdirectory /backup/2866fd20493d/backup
+	/usr/local/bin/backup <command> [<parameters>]
+	
+	command to controll backup of database in container
+
+	Command                Information
+	status                 gives the status of backup (active/	disabled/number of backups/disk size)
+	disable                disable backup
+	enable                 enable backup
+	destination <dir>      set backup-file destination (default /	backup/<hostname>/<cmdname>)
+	retain <num>           set number of backup to retain
+	schedule <inter>       set sceduled intervall between backups (hour/day/week/month)
+	show                   show currently saved backups
+	backup                 run backup now
+	help                   Show this information
+	list                   list current directories
+	add <src>              add directory to backup
+	remove <src>           remove directory from backup
+
+First setup which directories to do backup of, repeat for each directory
+
+	~$ docker exec web backup add /web/html
+	
+Check which directories is listed for backup
+
+	~$ docker exec web backup list
+	backup of /web/html, estimated size 8.0KB
+
+
+Set up a backup plan, daily and retain for 30 days
+
+	~$ docker exec web backup schedule 1d
+	~$ docker exec web backup retain 30
+	
+Check the setting so that they are correct
+
+	~$ docker exec web backup status
+	Backup is disabled
+	Active backups 0 of maximum 30
+	Backup interval 1d (cron 0 0 */1 * *)
+	Latest backup file 
+	Total size of backups 4.0KB
+	Backup destination directory is /backup/2866fd20493d/backup
+ 
+Default destination is /backup/<hostname>/<backup module name>, you can change this with
+
+	~$ docker exec web backup destination /new/directory/path
+	
+but the naming is used for the possibility to share a commong volume for all container backups, making uniq directories for earch container.
+
+Last command to do is to activate the defined backup schema
+	
+	~$ docker exec web backup enable
+
+It is possible to add manual backups to the backup, please remember that they are counted in the number of copies to retain
+
+	~$ docker exec web backup backup
+	backup of /web/html, size 8.0KB compressed 4.0KB
+	
+You can always check the current status with (i have used 1m interval just to create more files)
+
+	~$ docker exec web backup status
+	Backup is active
+	Active backups 11 of maximum 30
+	Backup interval 1d (cron 0 0 */1 * *)
+	Latest backup file backup-2016_08_11_10_25.tar
+	Total size of backups 48.0KB
+	Backup destination directory is /backup/2866fd20493d/backup
+
+
+and list current backups available 
+
+	~$ docker exec web backup show
+	list of backups
+	-rw-r--r--    1      3072 Aug 11 10:15 backup-2016_08_11_10_15.tar
+	-rw-r--r--    1      3072 Aug 11 10:16 backup-2016_08_11_10_16.tar
+	-rw-r--r--    1      3072 Aug 11 10:17 backup-2016_08_11_10_17.tar
+	-rw-r--r--    1      3072 Aug 11 10:18 backup-2016_08_11_10_18.tar
+	-rw-r--r--    1      3072 Aug 11 10:19 backup-2016_08_11_10_19.tar
+	-rw-r--r--    1      3072 Aug 11 10:20 backup-2016_08_11_10_20.tar
+	-rw-r--r--    1      3072 Aug 11 10:21 backup-2016_08_11_10_21.tar
+	-rw-r--r--    1      3072 Aug 11 10:22 backup-2016_08_11_10_22.tar
+	-rw-r--r--    1      3072 Aug 11 10:23 backup-2016_08_11_10_23.tar
+	-rw-r--r--    1      3072 Aug 11 10:24 backup-2016_08_11_10_24.tar
+	-rw-r--r--    1      3072 Aug 11 10:25 backup-2016_08_11_10_25.tar
+
+To pause the backup do
+
+	~$ docker exec web backup disable
+	
+## extra modules included
+
+The following modues are included (besides the base module)
+
+- [database mysql/mariadb](#mysql)
+
+
+## <a name="installation"></a>Installation
 
 Download the scripts from the github repository either as 
 [zip](https://github.com/nimmis/backup/archive/master.zip) or [tar](https://github.com/nimmis/backup/archive/master.tar.gz)
@@ -180,7 +300,7 @@ Shows the current backups stored at the backupdirectory
 ### backup
 
     >backup backup
-    backup of /etc, size 1.3MB compressed 192.0KB
+	backup of /etc, size 1.3MB compressed 192.0KB
 	backup of /lib, size 3.3MB compressed 1.6MB
     
 Execute a manual backup of the selected items (directories, databases etc)
@@ -218,7 +338,7 @@ Add a directory to the list of directories to be backuped
 	backup add /notadirectory
 	source not a directory
 	
-## Commands for /usr/local/bin/mysql_backup
+## <a name="mysql">Commands for /usr/local/bin/mysql_backup
 
 ### check
 
